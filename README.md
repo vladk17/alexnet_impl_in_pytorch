@@ -3,6 +3,11 @@ Learn Pytorch internals from its implementation of AlexNet
 
 PURPOSE: PRIVATE WORKING NOTES
 
+The plan is to 
+* walk through all the layers: from AlexNet python class to cuDNN (or low layer CPU) functions.
+* see where the backend layers (CPU/GPU) are set; where is the correct place to put, say, ARM-based backend
+
+
 Links:
 
 "A Walk-through of AlexNet" by Hao Gao in Medium [link](https://medium.com/@smallfishbigsea/a-walk-through-of-alexnet-6cbd137a5637)
