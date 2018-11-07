@@ -21,3 +21,10 @@ AlexNet class in PyTorch is defined [link](https://github.com/pytorch/vision/blo
 PyTorch issue: "Implement similar PyTorch function as model.summary() in keras?" is [here](https://github.com/pytorch/pytorch/issues/2001)
 
 Stackoverflow: "What's the best way to generate a UML diagram from Python source code?" [here](https://stackoverflow.com/questions/260165/whats-the-best-way-to-generate-a-uml-diagram-from-python-source-code)
+
+## class AlexNet
+Everything is a Module. AlexNet itself and all its defining elements inherit from the class Module.
+Sequential<-Module
+Conv2d<-...<-Module
+ReLU<-...<-Module
+MaxPool2d<-...<-Module
