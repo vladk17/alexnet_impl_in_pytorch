@@ -1,3 +1,4 @@
+
 # Source Code studies: Implementation of AlexNet in Pytorch
 Learn Pytorch internals from its implementation of AlexNet
 
@@ -31,7 +32,9 @@ Everything is a Module. AlexNet itself and all its defining elements inherit fro
 `Dropout<-_DropoutNd<-Module`<br>
 `Linear<-Module`<br>
 
-![classes ](imgs/AlexNet_class_hierarchy.bmp "Logo Title Text 1")
+
+![PyTorch nn classes making AlexNet](imgs/AlexNet_class_hierarchy.bmp "PyTorch nn classes making AlexNet")
 
 
 ## class Module
+
