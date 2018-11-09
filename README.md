@@ -1,10 +1,25 @@
 
 # Source Code studies: Implementation of AlexNet in Pytorch
-Learn Pytorch internals from its implementation of AlexNet
+
 
 PURPOSE: PRIVATE WORKING NOTES
 
-The plan is to 
+### Table of Contents
+
+* [Introduction](#section0)
+* [1. class AlexNet](#section1)
+* [2. class nn.Module](#section2)
+    * [2.1 nn.Module members](#section2.1)
+    * [2.2 nn.Module methods](#section2.2)
+* [3. class nn.Sequence](#section3)
+* [4. classs Conv2d and \_ConvNd](#section4)
+    * [4.1 Conv2d](#section4.1)
+
+<a id='section0'></a>
+## Introduction
+
+
+The plan is to Learn Pytorch internals from its implementation of AlexNet, to 
 * walk through all the layers: from AlexNet python class to cuDNN (or low layer CPU) functions.
 * see where the backend layers (CPU/GPU) are set; where is the correct place to put, say, ARM-based backend
 
@@ -25,6 +40,7 @@ Stackoverflow: "What's the best way to generate a UML diagram from Python source
 
 
 
+<a id='section1'></a>
 ## class AlexNet
 _Everything is a Module_. 
 
@@ -40,10 +56,12 @@ AlexNet itself and all its defining elements inherit from the class Module.<br>
 
 ![PyTorch nn classes making AlexNet](imgs/AlexNet_class_hierarchy.bmp "PyTorch nn classes making AlexNet")
 
+<a id='section2'></a>
 ## class nn.Module
 
-"Modules can also contain other Modules, allowing to nest them in a tree structure"
+nn.Modules can contain other nn.Modules, allowing to nest them in a tree structure
 
+<a id='section2.1'></a>
 ### nn.Module members
 
 ``` python
@@ -62,7 +80,8 @@ AlexNet itself and all its defining elements inherit from the class Module.<br>
         self.training = True
 ```
 
-### nn.Module methods:
+<a id='section2.2'></a>
+### nn.Module methods
 
 ``` python
 forward(self, *input) #rases NotImplementedError in the Module; Should be overridden by all subclasses
@@ -88,7 +107,7 @@ half(self)
 to(self, *args, **kwargs)
 
 
-__call__(self, *input, **kwargs)
+__call__(self, *input, **kwargs) # performace forward and backward passes - TBD verify and get details
 
 state_dict(self, destination=None, prefix='', keep_vars=False)
 
@@ -109,3 +128,73 @@ eval(self)
 zero_grad(self)
 
 ```
+
+<a id='section3'></a>
+## class nn.Sequence
+
+nn.Sequence constructor runs over the \*args or, alternatively, an ordered dict of modules and for each one of them calls nn.Module's `add_module()` function.
+
+```python
+    def __init__(self, *args):
+        super(Sequential, self).__init__()
+        if len(args) == 1 and isinstance(args[0], OrderedDict):
+            for key, module in args[0].items():
+                self.add_module(key, module)
+        else:
+            for idx, module in enumerate(args):
+                self.add_module(str(idx), module)
+```
+`add_module()` function adds a module to the `_modules` OrderedDict()
+
+The `forward()` function of nn.Sequence iteratively calls `forward()` function for each sub Module
+```python
+    def forward(self, input):
+        for module in self._modules.values():
+            input = module(input)
+        return input
+```
+
+<a id='section4'></a>
+## classs Conv2d and \_ConvNd
+
+<a id='section4.1'></a>
+### Conv2d
+
+`Conv2d` "applies a 2D convolution over an input signal composed of several input planes"
+
+`Conv2d` class is very small 
+```python
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True):
+        kernel_size = _pair(kernel_size)
+        stride = _pair(stride)
+        padding = _pair(padding)
+        dilation = _pair(dilation)
+        super(Conv2d, self).__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            False, _pair(0), groups, bias)
+
+    def forward(self, input):
+        return F.conv2d(input, self.weight, self.bias, self.stride,
+                        self.padding, self.dilation, self.groups)
+
+```
+
+Initialization of the `Conv2d` class members are based on `_ConvNd` class's capabilities. These capabilities are generic for all `ConvXd` classes
+
+The intereseting part is the `forward()` function is implemented by `F.conv2d()` function that belongs to PyTorch's "Functional interface" defined in `functional.py`
+
+```python
+conv1d = _add_docstr(torch.conv1d, ...)
+```
+here we see calls to "C++" functions (TBD get details of the call meachanism): 
+
+`"_add_docstr"` is mapped to `THPModule_addDocStr` method in C++ component `Module.cpp`:
+```C++
+static PyMethodDef TorchMethods[] = {
+  {"_initExtension",  (PyCFunction)THPModule_initExtension,   METH_O,       nullptr},
+  {"_autograd_init",  (PyCFunction)THPAutograd_initExtension, METH_NOARGS,  nullptr},
+  {"_add_docstr",     (PyCFunction)THPModule_addDocStr,       METH_VARARGS, nullptr},
+  ...
+```
+`Module.cpp` has nothing in common with `nn.Module` class
