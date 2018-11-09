@@ -23,8 +23,14 @@ PyTorch issue: "Implement similar PyTorch function as model.summary() in keras?"
 
 Stackoverflow: "What's the best way to generate a UML diagram from Python source code?" [here](https://stackoverflow.com/questions/260165/whats-the-best-way-to-generate-a-uml-diagram-from-python-source-code)
 
+
+
 ## class AlexNet
-Everything is a Module. AlexNet itself and all its defining elements inherit from the class Module.<br>
+_Everything is a Module_. 
+
+AlexNet itself and all its defining elements inherit from the class Module.<br>
+
+
 `Sequential<-Module`<br>
 `Conv2d<-_ConvNd<-Module`<br>
 `ReLU<-Threshold<-Module`<br>
@@ -32,9 +38,74 @@ Everything is a Module. AlexNet itself and all its defining elements inherit fro
 `Dropout<-_DropoutNd<-Module`<br>
 `Linear<-Module`<br>
 
-
 ![PyTorch nn classes making AlexNet](imgs/AlexNet_class_hierarchy.bmp "PyTorch nn classes making AlexNet")
 
+## class nn.Module
 
-## class Module
+"Modules can also contain other Modules, allowing to nest them in a tree structure"
 
+### nn.Module members
+
+``` python
+    def __init__(self):
+        self._backend = thnn_backend
+        
+        self._parameters = OrderedDict()
+        self._buffers = OrderedDict()
+        
+        self._backward_hooks = OrderedDict()
+        self._forward_hooks = OrderedDict()
+        self._forward_pre_hooks = OrderedDict()
+        
+        self._modules = OrderedDict() #nesting support
+        
+        self.training = True
+```
+
+### nn.Module methods:
+
+``` python
+forward(self, *input) #rases NotImplementedError in the Module; Should be overridden by all subclasses
+
+#"adders":
+register_buffer(self, name, tensor)
+register_parameter(self, name, param)
+add_module(self, name, module)
+
+apply(self, fn) #Applies ``fn`` recursively to every submodule
+
+#"movers" to from gpu/cpu
+cuda(self, device=None)
+cpu(self)
+
+#"type transformers:"
+type(self, dst_type) #Casts all parameters and buffers to :attr:`dst_type`
+float(self)
+double(self)
+half(self)
+
+#move and cast
+to(self, *args, **kwargs)
+
+
+__call__(self, *input, **kwargs)
+
+state_dict(self, destination=None, prefix='', keep_vars=False)
+
+#iterators:
+parameters(self, recurse=True)
+named_parameters(self, prefix='', recurse=True)
+buffers(self, recurse=True)
+named_buffers(self, prefix='', recurse=True)
+children(self)
+named_children(self)
+modules(self)
+named_modules(self, memo=None, prefix='')
+
+#mode setting
+train(self, mode=True)
+eval(self)
+
+zero_grad(self)
+
+```
