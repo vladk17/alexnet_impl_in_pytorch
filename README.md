@@ -25,6 +25,8 @@ Stackoverflow: "What's the best way to generate a UML diagram from Python source
 ## class AlexNet
 Everything is a Module. AlexNet itself and all its defining elements inherit from the class Module.<br>
 `Sequential<-Module`<br>
-`Conv2d<-...<-Module`<br>
-`ReLU<-...<-Module`<br>
-`MaxPool2d<-...<-Module`<br>
+`Conv2d<-_ConvNd<-Module`<br>
+`ReLU<-Threshold<-Module`<br>
+`MaxPool2d<-_MaxPoolNd<-Module`<br><br>
+`Dropout<-_DropoutNd<-Module`<br>
+`Linear<-Module`<br>
