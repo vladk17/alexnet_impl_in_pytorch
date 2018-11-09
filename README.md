@@ -30,3 +30,5 @@ Everything is a Module. AlexNet itself and all its defining elements inherit fro
 `MaxPool2d<-_MaxPoolNd<-Module`<br><br>
 `Dropout<-_DropoutNd<-Module`<br>
 `Linear<-Module`<br>
+
+## class Module
