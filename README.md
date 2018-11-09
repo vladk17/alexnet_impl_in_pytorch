@@ -31,4 +31,7 @@ Everything is a Module. AlexNet itself and all its defining elements inherit fro
 `Dropout<-_DropoutNd<-Module`<br>
 `Linear<-Module`<br>
 
+![classes ](imgs/AlexNet_class_hierarchy.bmp "Logo Title Text 1")
+
+
 ## class Module
