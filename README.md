@@ -34,11 +34,12 @@ AlexNet class in PyTorch is defined [link](https://github.com/pytorch/vision/blo
 
 "PyTorch Internals" (Part II) - The Build System" is [link](https://pytorch.org/blog/a-tour-of-pytorch-internals-2/)
 
-PyTorch issue: "Implement similar PyTorch function as model.summary() in keras?" is [here](https://github.com/pytorch/pytorch/issues/2001)
+PyTorch issue: "Implement similar PyTorch function as model.summary() in keras?" is [link](https://github.com/pytorch/pytorch/issues/2001)
 
-Stackoverflow: "What's the best way to generate a UML diagram from Python source code?" [here](https://stackoverflow.com/questions/260165/whats-the-best-way-to-generate-a-uml-diagram-from-python-source-code)
+Stackoverflow: "What's the best way to generate a UML diagram from Python source code?" [link](https://stackoverflow.com/questions/260165/whats-the-best-way-to-generate-a-uml-diagram-from-python-source-code)
 
-
+"Convolutions with cuDNN" by 
+Peter Goldsborough [link](http://www.goldsborough.me/cuda/ml/cudnn/c++/2017/10/01/14-37-23-convolutions_with_cudnn/)
 
 <a id='section1'></a>
 ## class AlexNet
@@ -198,3 +199,165 @@ static PyMethodDef TorchMethods[] = {
   ...
 ```
 `Module.cpp` has nothing in common with `nn.Module` class
+
+torch/scsrc/api/src/nn/modules/conv.cpp:
+```C++
+Tensor Conv2dImpl::forward(Tensor input) {
+  AT_ASSERT(input.ndimension() == 4);
+
+...
+  return torch::conv2d(
+      input,
+      weight,
+      bias,
+      options.stride_,
+      options.padding_,
+      options.dilation_,
+      options.groups_);
+}
+
+```
+
+aten/src/ATen/native/Convolution.cpp:
+
+```C++
+at::Tensor conv2d(
+    const Tensor& input, const Tensor& weight, const Tensor& bias,
+    IntList stride, IntList padding, IntList dilation, int64_t groups) {
+  return at::convolution(input, weight, bias, stride, padding, dilation,
+                         false, {{0, 0}}, groups);
+}
+
+...
+
+at::Tensor convolution(
+    const Tensor& input, const Tensor& weight, const Tensor& bias,
+    IntList stride, IntList padding, IntList dilation,
+    bool transposed, IntList output_padding, int64_t groups) {
+  auto& ctx = at::globalContext();
+  return at::_convolution(input, weight, bias, stride, padding, dilation,
+                          transposed, output_padding, groups,
+                          ctx.benchmarkCuDNN(), ctx.deterministicCuDNN(), ctx.userEnabledCuDNN());
+}
+
+
+...
+    
+    
+
+at::Tensor _convolution(
+    const Tensor& input_r, const Tensor& weight_r, const Tensor& bias_r,
+    IntList stride_, IntList padding_, IntList dilation_,
+    bool transposed_, IntList output_padding_, int64_t groups_,
+    bool benchmark, bool deterministic, bool cudnn_enabled) {
+
+...
+
+  if (params.is_depthwise(input, weight)) {
+      /* output.resize_(output_size(input, weight)); */
+
+...
+      output = at::thnn_conv_depthwise2d(input, weight, kernel_size, bias, stride, padding, dilation);
+  } else if (params.use_cudnn(input)) {
+
+...
+      output = at::cudnn_convolution(
+          input, weight, bias,
+          params.padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
+   
+  } else if (params.use_miopen(input)) {
+
+...
+      output = at::miopen_convolution(
+          input, weight, bias,
+          params.padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
+
+  } else if (params.use_mkldnn(input)) {
+#if AT_MKLDNN_ENABLED()
+...
+
+    output = at::mkldnn_convolution(input, weight, bias, params.padding, params.stride, params.dilation, params.groups);
+#endif
+  } else {
+    if (params.groups == 1) {
+      output = at::_convolution_nogroup(
+          input, weight, bias, params.stride, params.padding, params.dilation, params.transposed, params.output_padding);
+    } else {
+...
+        outputs[g] = at::_convolution_nogroup(
+            input_g, weight_g, bias_g, params.stride, params.padding, params.dilation, params.transposed, params.output_padding);
+      }
+      output = at::cat(outputs, 1);
+    }
+  }
+
+  if (k == 3) {
+    output = view3d(output);
+  }
+
+  return output;
+}    
+
+```
+
+```C++
+// A generic function for convolution implementations which don't
+// natively implement groups (e.g., not CuDNN).
+at::Tensor _convolution_nogroup(
+    const Tensor& input, const Tensor& weight, const Tensor& bias,
+    IntList stride, IntList padding, IntList dilation,
+    bool transposed, IntList output_padding) {
+
+...
+
+    if (dim == 4) {
+      if (dilated) {
+        return at::thnn_conv_dilated2d(
+            input, weight, kernel_size, bias,
+            stride, padding, dilation);
+      } else {  /* dim == 4, non-dilated */
+        /* CPU implementation has specialized MM kernels
+           for non-dilated case here */
+        return at::thnn_conv2d(
+            input, weight, kernel_size, bias,
+            stride, padding);
+      }
+    } else if (dim == 5 && (input.type().is_cuda() || dilated)) {
+      return at::thnn_conv_dilated3d(
+          input, weight, kernel_size, bias,
+          stride, padding, dilation);
+    } else if (dim == 5) { /* dim == 5, CPU, non-dilated */
+      /* CPU implementation has specialized MM kernels
+         for non-dilated case here */
+      return at::thnn_conv3d(
+          input, weight, kernel_size, bias,
+          stride, padding);
+    }
+..
+
+  AT_ERROR("unsupported ConvNd parameters");
+}
+
+```
+
+In case when cuDNN is supported, after few more hopes we reach the following:
+```C++
+void raw_cudnn_convolution_forward_out(
+    const Tensor& output, const Tensor& input, const Tensor& weight,
+    IntList padding, IntList stride, IntList dilation, int64_t groups,
+    bool benchmark, bool deterministic) {
+
+  auto dataType = getCudnnDataType(input);
+
+...
+
+  AT_CUDNN_CHECK(cudnnConvolutionForward(
+    args.handle,
+    &one, args.idesc.desc(), input.data_ptr(),
+    args.wdesc.desc(), weight.data_ptr(),
+    args.cdesc.desc(), fwdAlg, workspace.data, workspace.size,
+    &zero, args.odesc.desc(), output.data_ptr()));
+}
+```
+here we finaly get to cuDNN SDK function [cudnnConvolutionForward()](https://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnConvolutionForward).
+The cuDNN source is not open
