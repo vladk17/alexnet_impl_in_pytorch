@@ -1,30 +1,36 @@
 
-# Source Code studies: Implementation of AlexNet in Pytorch
-
+# Deep Dive into Implementation of AlexNet in Pytorch
+Source Code studies
 
 PURPOSE: PRIVATE WORKING NOTES
 
 ### Table of Contents
 
-* [Introduction](#section0)
-* [1. class AlexNet](#section1)
-* [2. class nn.Module](#section2)
-    * [2.1 nn.Module members](#section2.1)
-    * [2.2 nn.Module methods](#section2.2)
-* [3. class nn.Sequence](#section3)
-* [4. classs Conv2d and \_ConvNd](#section4)
-    * [4.1 Conv2d](#section4.1)
+* [1. Introduction](#section1)
+* [2. class AlexNet](#section2)
+* [3. class nn.Module](#section3)
+    * [3.1 nn.Module members](#section3.1)
+    * [3.2 nn.Module methods](#section3.2)
+* [4. class nn.Sequence](#section4)
+* [5. classs Conv2d and \_ConvNd](#section5)
+    * [5.1 Conv2d](#section5.1)
 
-<a id='section0'></a>
-## Introduction
+<a id='section1'></a>
+## 1. Introduction
 
 
 The plan is to Learn Pytorch internals from its implementation of AlexNet, to 
 * walk through all the layers: from AlexNet python class to cuDNN (or low layer CPU) functions.
 * see where the backend layers (CPU/GPU) are set; where is the correct place to put, say, ARM-based backend
 
+AlexNet is selected as an example of a relatively simple convolutional network.
 
 Links:
+
+"Convolutional Neural Networks overview" in cs231n by Andrej Karpathy [link](http://cs231n.github.io/convolutional-networks/)
+
+"ImageNet Classification with Deep Convolutional Neural Networks" by Alex Krizhevsky, Ilya Sutskever, and 
+Geoffrey E. Hinton [link](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf)
 
 "A Walk-through of AlexNet" by Hao Gao in Medium [link](https://medium.com/@smallfishbigsea/a-walk-through-of-alexnet-6cbd137a5637)
 
@@ -41,8 +47,10 @@ Stackoverflow: "What's the best way to generate a UML diagram from Python source
 "Convolutions with cuDNN" by 
 Peter Goldsborough [link](http://www.goldsborough.me/cuda/ml/cudnn/c++/2017/10/01/14-37-23-convolutions_with_cudnn/)
 
-<a id='section1'></a>
-## class AlexNet
+"A Tutorial on Filter Groups (Grouped Convolution)" by Yani Ioannou [link](https://blog.yani.io/filter-group-tutorial/) and the paper "Deep Roots: Improving CNN Efficiency with Hierarchical Filter Groups" [link](https://arxiv.org/pdf/1605.06489.pdf)
+
+<a id='section2'></a>
+## 2. class AlexNet
 _Everything is a Module_. 
 
 AlexNet itself and all its defining elements inherit from the class Module.<br>
@@ -57,13 +65,13 @@ AlexNet itself and all its defining elements inherit from the class Module.<br>
 
 ![PyTorch nn classes making AlexNet](imgs/AlexNet_class_hierarchy.bmp "PyTorch nn classes making AlexNet")
 
-<a id='section2'></a>
-## class nn.Module
+<a id='section3'></a>
+## 3. class nn.Module
 
 nn.Modules can contain other nn.Modules, allowing to nest them in a tree structure
 
-<a id='section2.1'></a>
-### nn.Module members
+<a id='section3.1'></a>
+### 3.1. nn.Module members
 
 ``` python
     def __init__(self):
@@ -81,8 +89,8 @@ nn.Modules can contain other nn.Modules, allowing to nest them in a tree structu
         self.training = True
 ```
 
-<a id='section2.2'></a>
-### nn.Module methods
+<a id='section3.2'></a>
+### 3.2 nn.Module methods
 
 ``` python
 forward(self, *input) #rases NotImplementedError in the Module; Should be overridden by all subclasses
@@ -130,8 +138,8 @@ zero_grad(self)
 
 ```
 
-<a id='section3'></a>
-## class nn.Sequence
+<a id='section4'></a>
+## 4. class nn.Sequence
 
 nn.Sequence constructor runs over the \*args or, alternatively, an ordered dict of modules and for each one of them calls nn.Module's `add_module()` function.
 
@@ -155,11 +163,11 @@ The `forward()` function of nn.Sequence iteratively calls `forward()` function f
         return input
 ```
 
-<a id='section4'></a>
-## classs Conv2d and \_ConvNd
+<a id='section5'></a>
+## 5. classs Conv2d and \_ConvNd
 
-<a id='section4.1'></a>
-### Conv2d
+<a id='section5.1'></a>
+### 5.1 Conv2d
 
 `Conv2d` "applies a 2D convolution over an input signal composed of several input planes"
 
@@ -359,5 +367,7 @@ void raw_cudnn_convolution_forward_out(
     &zero, args.odesc.desc(), output.data_ptr()));
 }
 ```
-here we finaly get to cuDNN SDK function [cudnnConvolutionForward()](https://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnConvolutionForward).
-The cuDNN source is not open
+
+Here we are..
+We finaly get to cuDNN SDK function [cudnnConvolutionForward()](https://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#cudnnConvolutionForward).
+"The cuDNN is closed-source low-level library for deep learning primitives developed by NVIDIA"
