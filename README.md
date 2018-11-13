@@ -14,6 +14,8 @@ PURPOSE: PRIVATE WORKING NOTES
 * [4. class nn.Sequence](#section4)
 * [5. classs Conv2d and \_ConvNd](#section5)
     * [5.1 Conv2d](#section5.1)
+* [6. Module.cpp](#section6)
+* [7. Convolution.cpp](#section7)
 
 <a id='section1'></a>
 ## 1. Introduction
@@ -32,6 +34,8 @@ Links:
 "ImageNet Classification with Deep Convolutional Neural Networks" by Alex Krizhevsky, Ilya Sutskever, and 
 Geoffrey E. Hinton [link](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf)
 
+"One weird trick for parallelizing convolutional neural networks" by Alex Krizhevsky [link](https://arxiv.org/pdf/1404.5997.pdf)
+
 "A Walk-through of AlexNet" by Hao Gao in Medium [link](https://medium.com/@smallfishbigsea/a-walk-through-of-alexnet-6cbd137a5637)
 
 AlexNet class in PyTorch is defined [link](https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py)
@@ -48,6 +52,10 @@ Stackoverflow: "What's the best way to generate a UML diagram from Python source
 Peter Goldsborough [link](http://www.goldsborough.me/cuda/ml/cudnn/c++/2017/10/01/14-37-23-convolutions_with_cudnn/)
 
 "A Tutorial on Filter Groups (Grouped Convolution)" by Yani Ioannou [link](https://blog.yani.io/filter-group-tutorial/) and the paper "Deep Roots: Improving CNN Efficiency with Hierarchical Filter Groups" [link](https://arxiv.org/pdf/1605.06489.pdf)
+
+"Fast Algorithms for Convolutional Neural Networks" - review (and Winograd algorithm in details) by Andrew Lavin and Scott Gray [link](https://arxiv.org/pdf/1509.09308.pdf)
+
+"Easy benchmarking of all publicly accessible implementations of convnets" by Soumith Chintala [link](https://arxiv.org/pdf/1404.5997.pdf)
 
 <a id='section2'></a>
 ## 2. class AlexNet
@@ -198,6 +206,9 @@ conv1d = _add_docstr(torch.conv1d, ...)
 ```
 here we see calls to "C++" functions (TBD get details of the call meachanism): 
 
+<a id='section6'></a>
+## 6. Module.cpp
+
 `"_add_docstr"` is mapped to `THPModule_addDocStr` method in C++ component `Module.cpp`:
 ```C++
 static PyMethodDef TorchMethods[] = {
@@ -225,6 +236,9 @@ Tensor Conv2dImpl::forward(Tensor input) {
 }
 
 ```
+
+<a id='section7'></a>
+## 7. Convolution.cpp
 
 aten/src/ATen/native/Convolution.cpp:
 
