@@ -209,6 +209,84 @@ here we see calls to "C++" functions (TBD get details of the call meachanism):
 <a id='section6'></a>
 ## 6. Module.cpp
 
+`torch/csrc/Module.cpp` defines  “extension module” `._C`- a Python module written in C. 
+>`Module.cpp` has nothing in common with the python class `nn.Module` discussed above
+
+The initialization function `init_C()` / `PyInit__C()` (named according to the ["Extending and Embedding the Python Interpreter"](https://docs.python.org/3.7/extending/extending.html#the-module-s-method-table-and-initialization-function): `PyInit_name()`, where `name` is the name of the module) creates the module and adds the method definitions. When the Python program imports module `._C` for the first time, `PyInit__C()` is called.
+
+```C
+PyMODINIT_FUNC PyInit__C()
+{
+...
+    return initModule();
+}
+```
+
+```C++
+static PyObject* initModule() {
+...
+  THPUtils_addPyMethodDefs(methods, TorchMethods);
+  THPUtils_addPyMethodDefs(methods, DataLoaderMethods);
+  THPUtils_addPyMethodDefs(methods, torch::autograd::python_functions());
+...
+#ifdef USE_CUDNN
+  THPUtils_addPyMethodDefs(methods, THCUDNN_methods());
+#endif
+...
+
+#if PY_MAJOR_VERSION == 2
+  ASSERT_TRUE(module = Py_InitModule("torch._C", methods.data()));
+#else
+  static struct PyModuleDef torchmodule = {
+     PyModuleDef_HEAD_INIT,
+     "torch._C",
+     nullptr,
+     -1,
+     methods.data()
+  };
+  ASSERT_TRUE(module = PyModule_Create(&torchmodule));
+#endif
+  ASSERT_TRUE(THPWrapper_init(module));
+  ASSERT_TRUE(THPGenerator_init(module));
+  ASSERT_TRUE(THPException_init(module));
+  THPSize_init(module);
+  THPDtype_init(module);
+  THPLayout_init(module);
+  THPDevice_init(module);
+  ASSERT_TRUE(THPVariable_initModule(module));
+  ASSERT_TRUE(THPFunction_initModule(module));
+  ASSERT_TRUE(THPEngine_initModule(module));
+  // NOTE: We need to be able to access OperatorExportTypes from ONNX for use in
+  // the export side of JIT, so this ONNX init needs to appear before the JIT
+  // init.
+  torch::onnx::initONNXBindings(module);
+  torch::jit::initJITBindings(module);
+  torch::autograd::initNNFunctions(module);
+  torch::autograd::init_legacy_variable(module);
+#ifdef USE_CUDA
+  torch::cuda::initModule(module);
+#endif
+  ASSERT_TRUE(THPDoubleStorage_init(module));
+  ASSERT_TRUE(THPFloatStorage_init(module));
+  ASSERT_TRUE(THPHalfStorage_init(module));
+  ASSERT_TRUE(THPLongStorage_init(module));
+  ASSERT_TRUE(THPIntStorage_init(module));
+  ASSERT_TRUE(THPShortStorage_init(module));
+  ASSERT_TRUE(THPCharStorage_init(module));
+  ASSERT_TRUE(THPByteStorage_init(module));
+
+...
+
+  auto set_module_attr = [&](const char* name, PyObject* v, bool incref = true) {
+    // PyModule_AddObject steals reference
+    if (incref) {
+      Py_INCREF(v);
+    }
+    return PyModule_AddObject(module, name, v) == 0;
+  };
+
+```
+
 `"_add_docstr"` is mapped to `THPModule_addDocStr` method in C++ component `Module.cpp`:
 ```C++
 static PyMethodDef TorchMethods[] = {
@@ -217,7 +295,6 @@ static PyMethodDef TorchMethods[] = {
   {"_add_docstr",     (PyCFunction)THPModule_addDocStr,       METH_VARARGS, nullptr},
   ...
 ```
-`Module.cpp` has nothing in common with `nn.Module` class
 
 torch/scsrc/api/src/nn/modules/conv.cpp:
 ```C++
