@@ -1,5 +1,5 @@
 
-# Deep Dive into Implementation of AlexNet in Pytorch
+# Dive into Implementation of AlexNet in Pytorch
 Source Code studies
 
 PURPOSE: PRIVATE WORKING NOTES
