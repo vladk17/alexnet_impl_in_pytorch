@@ -61,7 +61,7 @@ Peter Goldsborough [link](http://www.goldsborough.me/cuda/ml/cudnn/c++/2017/10/0
 ## 2. class AlexNet
 _Everything is a Module_. 
 
-AlexNet itself and all its defining elements inherit from the class Module.<br>
+AlexNet itself and all its defining elements inherit from the class [Module](https://pytorch.org/docs/stable/generated/torch.nn.Module.html).<br>
 
 
 `Sequential<-Module`<br>
